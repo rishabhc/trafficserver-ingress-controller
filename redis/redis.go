@@ -189,3 +189,16 @@ func (c *Client) PrintAllKeys() {
 		log.Println("DBOne.Do(\"KEYS\", \"*\").Result(): ", res)
 	}
 }
+
+func (c *Client) GetDBOneKeys() interface{} {
+	var (
+		res interface{}
+		err error
+	)
+
+	if res, err = c.DBOne.Do("KEYS", "*").Result(); err != nil {
+		log.Println("Error Printing DB One (1): ", err)
+	}
+
+	return res
+}
