@@ -45,6 +45,23 @@ func TestAdd_ExampleIngressWithAnnotation(t *testing.T) {
 	}
 }
 
+func TestAdd_ExampleIngressWithTLS(t *testing.T) {
+	igHandler := createExampleIgHandler()
+	exampleIngress := createExampleIngressWithTLS()
+
+	igHandler.add(&exampleIngress)
+
+	returnedKeys := igHandler.Ep.RedisClient.GetDBOneKeyValues()
+
+	expectedKeys := getExpectedKeysForAdd()
+	expectedKeys["https://test.edge.com/app1"] = expectedKeys["http://test.edge.com/app1"]
+	delete(expectedKeys, "http://test.edge.com/app1")
+
+	if !reflect.DeepEqual(returnedKeys, expectedKeys) {
+		t.Errorf("returned \n%v,  but expected \n%v", returnedKeys, expectedKeys)
+	}
+}
+
 func TestUpdate_ModifyIngress(t *testing.T) {
 	igHandler := createExampleIgHandler()
 	exampleIngress := createExampleIngress()
@@ -54,6 +71,7 @@ func TestUpdate_ModifyIngress(t *testing.T) {
 	updatedExampleIngress.Spec.Rules[1].IngressRuleValue.HTTP.Paths[0].Backend.ServiceName = "appsvc1-modified"
 	updatedExampleIngress.Spec.Rules[1].IngressRuleValue.HTTP.Paths[0].Backend.ServicePort = intstr.FromString("9090")
 
+	igHandler.add(&exampleIngress)
 	igHandler.update(&exampleIngress, &updatedExampleIngress)
 
 	returnedKeys := igHandler.Ep.RedisClient.GetDBOneKeyValues()
@@ -72,10 +90,52 @@ func TestUpdate_DeletePath(t *testing.T) {
 
 	updatedExampleIngress.Spec.Rules[0].IngressRuleValue.HTTP.Paths = updatedExampleIngress.Spec.Rules[0].IngressRuleValue.HTTP.Paths[:1]
 
+	igHandler.add(&exampleIngress)
 	igHandler.update(&exampleIngress, &updatedExampleIngress)
 
 	returnedKeys := igHandler.Ep.RedisClient.GetDBOneKeyValues()
 	expectedKeys := getExpectedKeysForUpdate_DeleteService()
+
+	if !reflect.DeepEqual(returnedKeys, expectedKeys) {
+		t.Errorf("returned \n%v,  but expected \n%v", returnedKeys, expectedKeys)
+	}
+}
+
+func TestUpdate_ModifySnippet(t *testing.T) {
+	igHandler := createExampleIgHandler()
+	exampleIngress := createExampleIngressWithAnnotation()
+	updatedExampleIngress := createExampleIngressWithAnnotation()
+
+	exampleSnippet := getExampleSnippet()
+	exampleSnippet = exampleSnippet + `
+	ts.debug('Modifications for the purpose of testing')`
+
+	updatedExampleIngress.ObjectMeta.Annotations["ats.ingress.kubernetes.io/server-snippet"] = exampleSnippet
+	updatedExampleIngress.SetResourceVersion("10")
+
+	igHandler.add(&exampleIngress)
+	igHandler.update(&exampleIngress, &updatedExampleIngress)
+
+	returnedKeys := igHandler.Ep.RedisClient.GetDBOneKeyValues()
+	expectedKeys := getExpectedKeysForUpdate_ModifySnippet()
+
+	if !reflect.DeepEqual(returnedKeys, expectedKeys) {
+		t.Errorf("returned \n%v,  but expected \n%v", returnedKeys, expectedKeys)
+	}
+}
+
+func TestUpdate_ModifyTLS(t *testing.T) {
+	igHandler := createExampleIgHandler()
+	exampleIngress := createExampleIngress()
+	updatedExampleIngress := createExampleIngressWithTLS()
+
+	igHandler.add(&exampleIngress)
+	igHandler.update(&exampleIngress, &updatedExampleIngress)
+
+	returnedKeys := igHandler.Ep.RedisClient.GetDBOneKeyValues()
+	expectedKeys := getExpectedKeysForAdd()
+	expectedKeys["https://test.edge.com/app1"] = expectedKeys["http://test.edge.com/app1"]
+	delete(expectedKeys, "http://test.edge.com/app1")
 
 	if !reflect.DeepEqual(returnedKeys, expectedKeys) {
 		t.Errorf("returned \n%v,  but expected \n%v", returnedKeys, expectedKeys)
@@ -96,6 +156,18 @@ func TestDelete(t *testing.T) {
 		t.Errorf("returned \n%v,  but expected \n%v", returnedKeys, expectedKeys)
 	}
 
+}
+
+func createExampleIngressWithTLS() v1beta1.Ingress {
+	exampleIngress := createExampleIngress()
+
+	exampleIngress.Spec.TLS = []v1beta1.IngressTLS{
+		{
+			Hosts: []string{"test.edge.com"},
+		},
+	}
+
+	return exampleIngress
 }
 
 func createExampleIngressWithAnnotation() v1beta1.Ingress {
@@ -192,6 +264,22 @@ func createExampleEndpoint() ep.Endpoint {
 	}
 
 	return exampleEndpoint
+}
+
+func getExpectedKeysForUpdate_ModifySnippet() map[string][]string {
+	expectedKeys := getExpectedKeysForAddWithAnnotation()
+
+	updatedSnippet := getExampleSnippet()
+	updatedSnippet = updatedSnippet + `
+	ts.debug('Modifications for the purpose of testing')`
+
+	expectedKeys["$trafficserver-test/example-ingress/10"] = []string{}
+	expectedKeys["$trafficserver-test/example-ingress/10"] = append(expectedKeys["$trafficserver-test/example-ingress/10"], updatedSnippet)
+
+	expectedKeys["http://test.edge.com/app1"] = expectedKeys["http://test.edge.com/app1"][:1]
+	expectedKeys["http://test.edge.com/app1"] = append(expectedKeys["http://test.edge.com/app1"], "$trafficserver-test/example-ingress/10")
+
+	return expectedKeys
 }
 
 func getExpectedKeysForUpdate_ModifyIngress() map[string][]string {
