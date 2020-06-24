@@ -15,7 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-func TestBasicAdd(t *testing.T) {
+func TestAdd_ExampleIngress(t *testing.T) {
 	igHandler := createExampleIgHandler()
 	exampleIngress := createExampleIngress()
 
@@ -30,22 +30,82 @@ func TestBasicAdd(t *testing.T) {
 	}
 }
 
-func TestBasicUpdate(t *testing.T) {
+func TestAdd_ExampleIngressWithAnnotation(t *testing.T) {
+	igHandler := createExampleIgHandler()
+	exampleIngress := createExampleIngressWithAnnotation()
+
+	igHandler.add(&exampleIngress)
+
+	returnedKeys := igHandler.Ep.RedisClient.GetDBOneKeyValues()
+
+	expectedKeys := getExpectedKeysForAddWithAnnotation()
+
+	if !reflect.DeepEqual(returnedKeys, expectedKeys) {
+		t.Errorf("returned \n%v,  but expected \n%v", returnedKeys, expectedKeys)
+	}
+}
+
+func TestUpdate_ModifyIngress(t *testing.T) {
 	igHandler := createExampleIgHandler()
 	exampleIngress := createExampleIngress()
 	updatedExampleIngress := createExampleIngress()
 
 	updatedExampleIngress.Spec.Rules[0].IngressRuleValue.HTTP.Paths[1].Path = "/app2-modified"
+	updatedExampleIngress.Spec.Rules[1].IngressRuleValue.HTTP.Paths[0].Backend.ServiceName = "appsvc1-modified"
+	updatedExampleIngress.Spec.Rules[1].IngressRuleValue.HTTP.Paths[0].Backend.ServicePort = intstr.FromString("9090")
 
 	igHandler.update(&exampleIngress, &updatedExampleIngress)
 
 	returnedKeys := igHandler.Ep.RedisClient.GetDBOneKeyValues()
 
-	expectedKeys := getExpectedKeysForUpdate()
+	expectedKeys := getExpectedKeysForUpdate_ModifyIngress()
 
 	if !reflect.DeepEqual(returnedKeys, expectedKeys) {
 		t.Errorf("returned \n%v,  but expected \n%v", returnedKeys, expectedKeys)
 	}
+}
+
+func TestUpdate_DeletePath(t *testing.T) {
+	igHandler := createExampleIgHandler()
+	exampleIngress := createExampleIngress()
+	updatedExampleIngress := createExampleIngress()
+
+	updatedExampleIngress.Spec.Rules[0].IngressRuleValue.HTTP.Paths = updatedExampleIngress.Spec.Rules[0].IngressRuleValue.HTTP.Paths[:1]
+
+	igHandler.update(&exampleIngress, &updatedExampleIngress)
+
+	returnedKeys := igHandler.Ep.RedisClient.GetDBOneKeyValues()
+	expectedKeys := getExpectedKeysForUpdate_DeleteService()
+
+	if !reflect.DeepEqual(returnedKeys, expectedKeys) {
+		t.Errorf("returned \n%v,  but expected \n%v", returnedKeys, expectedKeys)
+	}
+}
+
+func TestDelete(t *testing.T) {
+	igHandler := createExampleIgHandler()
+	exampleIngress := createExampleIngress()
+
+	igHandler.delete(&exampleIngress)
+
+	returnedKeys := igHandler.Ep.RedisClient.GetDBOneKeyValues()
+
+	expectedKeys := make(map[string][]string)
+
+	if !reflect.DeepEqual(returnedKeys, expectedKeys) {
+		t.Errorf("returned \n%v,  but expected \n%v", returnedKeys, expectedKeys)
+	}
+
+}
+
+func createExampleIngressWithAnnotation() v1beta1.Ingress {
+	exampleIngress := createExampleIngress()
+
+	exampleIngress.ObjectMeta.Annotations = make(map[string]string)
+	exampleIngress.ObjectMeta.Annotations["ats.ingress.kubernetes.io/server-snippet"] = getExampleSnippet()
+	exampleIngress.Spec.Rules = exampleIngress.Spec.Rules[1:]
+
+	return exampleIngress
 }
 
 func createExampleIngress() v1beta1.Ingress {
@@ -134,13 +194,24 @@ func createExampleEndpoint() ep.Endpoint {
 	return exampleEndpoint
 }
 
-func getExpectedKeysForUpdate() map[string][]string {
+func getExpectedKeysForUpdate_ModifyIngress() map[string][]string {
 	expectedKeys := getExpectedKeysForAdd()
 
 	delete(expectedKeys, "http://test.media.com/app2")
 
 	expectedKeys["http://test.media.com/app2-modified"] = []string{}
 	expectedKeys["http://test.media.com/app2-modified"] = append(expectedKeys["http://test.media.com/app2"], "trafficserver-test:appsvc2:8080")
+
+	expectedKeys["http://test.edge.com/app1"] = []string{}
+	expectedKeys["http://test.edge.com/app1"] = append(expectedKeys["http://test.edge.com/app1"], "trafficserver-test:appsvc1-modified:9090")
+
+	return expectedKeys
+}
+
+func getExpectedKeysForUpdate_DeleteService() map[string][]string {
+	expectedKeys := getExpectedKeysForAdd()
+
+	delete(expectedKeys, "http://test.media.com/app2")
 
 	return expectedKeys
 }
@@ -156,4 +227,31 @@ func getExpectedKeysForAdd() map[string][]string {
 	expectedKeys["http://test.media.com/app1"] = append(expectedKeys["http://test.media.com/app1"], "trafficserver-test:appsvc1:8080")
 
 	return expectedKeys
+}
+
+func getExpectedKeysForAddWithAnnotation() map[string][]string {
+	expectedKeys := getExpectedKeysForAdd()
+
+	delete(expectedKeys, "http://test.media.com/app1")
+	delete(expectedKeys, "http://test.media.com/app2")
+
+	expectedKeys["http://test.edge.com/app1"] = append(expectedKeys["http://test.edge.com/app1"], "$trafficserver-test/example-ingress/")
+
+	exampleSnippet := getExampleSnippet()
+
+	expectedKeys["$trafficserver-test/example-ingress/"] = []string{}
+	expectedKeys["$trafficserver-test/example-ingress/"] = append(expectedKeys["$trafficserver-test/example-ingress/"], exampleSnippet)
+
+	return expectedKeys
+}
+
+func getExampleSnippet() string {
+	return `ts.debug('Debug msg example')
+	ts.error('Error msg example')
+	-- ts.hook(TS_LUA_HOOK_SEND_RESPONSE_HDR, function()
+	--   ts.client_response.header['Location'] = 'https://test.edge.com/app2'
+	-- end)
+	-- ts.http.skip_remapping_set(0)
+	-- ts.http.set_resp(301, 'Redirect')
+	ts.debug('Uncomment the above lines to redirect http request to https')`
 }
