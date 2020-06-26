@@ -191,6 +191,43 @@ func (c *Client) PrintAllKeys() {
 	}
 }
 
+func (c *Client) GetDefaultDBKeyValues() map[string][]string {
+	var (
+		res         interface{}
+		err         error
+		keyValueMap map[string][]string
+	)
+
+	if res, err = c.DefaultDB.Do("KEYS", "*").Result(); err != nil {
+		log.Println("Error Printing DB One (1): ", err)
+	}
+
+	keyValueMap = make(map[string][]string)
+
+	switch keys := res.(type) {
+	case []interface{}:
+		for _, key := range keys {
+			if smembers, err := c.DefaultDB.Do("SMEMBERS", key).Result(); err != nil {
+				log.Println("Error Printing DB One (1): ", err)
+			} else {
+				keyValueMap[key.(string)] = []string{}
+				switch values := smembers.(type) {
+				case []interface{}:
+					for _, value := range values {
+						keyValueMap[key.(string)] = append(keyValueMap[key.(string)], value.(string))
+					}
+				default:
+					fmt.Printf("Cannot iterate over %T\n", smembers)
+				}
+			}
+		}
+	default:
+		fmt.Printf("Cannot iterate over %T\n", res)
+	}
+
+	return keyValueMap
+}
+
 func (c *Client) GetDBOneKeyValues() map[string][]string {
 	var (
 		res         interface{}
