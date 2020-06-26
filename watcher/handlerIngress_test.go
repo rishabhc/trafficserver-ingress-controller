@@ -62,6 +62,44 @@ func TestAdd_ExampleIngressWithTLS(t *testing.T) {
 	}
 }
 
+func TestAdd_ExampleIngressWithIgnoredNamespace(t *testing.T) {
+	igHandler := createExampleIgHandler()
+	exampleIngress := createExampleIngressWithTLS()
+
+	igHandler.Ep.NsManager.IgnoreNamespaceMap["ignored-namespace"] = true
+
+	exampleIngress.ObjectMeta.Namespace = "ignored-namespace"
+
+	igHandler.add(&exampleIngress)
+
+	returnedKeys := igHandler.Ep.RedisClient.GetDBOneKeyValues()
+
+	expectedKeys := make(map[string][]string)
+
+	if !reflect.DeepEqual(returnedKeys, expectedKeys) {
+		t.Errorf("returned \n%v,  but expected \n%v", returnedKeys, expectedKeys)
+	}
+}
+
+func TestAdd_ExampleIngressWithIncludedNamespace(t *testing.T) {
+	igHandler := createExampleIgHandler()
+	exampleIngress := createExampleIngress()
+
+	igHandler.Ep.NsManager.DisableAllNamespaces()
+	igHandler.Ep.NsManager.NamespaceMap["trafficserver-test"] = true
+
+	igHandler.add(&exampleIngress)
+
+	returnedKeys := igHandler.Ep.RedisClient.GetDBOneKeyValues()
+
+	expectedKeys := getExpectedKeysForAdd()
+
+	if !reflect.DeepEqual(returnedKeys, expectedKeys) {
+		t.Errorf("returned \n%v,  but expected \n%v", returnedKeys, expectedKeys)
+	}
+
+}
+
 func TestUpdate_ModifyIngress(t *testing.T) {
 	igHandler := createExampleIgHandler()
 	exampleIngress := createExampleIngress()
@@ -248,14 +286,14 @@ func createExampleEndpoint() ep.Endpoint {
 	}
 
 	namespaceMap := make(map[string]bool)
-	namespaceMap["trafficserver-test"] = true
-
 	ignoreNamespaceMap := make(map[string]bool)
 
 	nsManager := namespace.NsManager{
 		NamespaceMap:       namespaceMap,
 		IgnoreNamespaceMap: ignoreNamespaceMap,
 	}
+
+	nsManager.Init()
 
 	exampleEndpoint := ep.Endpoint{
 		RedisClient: rClient,
