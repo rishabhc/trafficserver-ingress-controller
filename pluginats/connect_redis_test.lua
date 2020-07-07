@@ -79,7 +79,6 @@ describe("Unit tests - Lua", function()
       assert.stub(ts.error).was.called_with("Error msg example")
       assert.stub(ts.http.skip_remapping_set).was.called_with(0)
       assert.stub(ts.http.set_resp).was.called_with(301,"Redirect")
-
     end)
 
     teardown(function()
