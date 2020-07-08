@@ -159,3 +159,57 @@ func ReverseSlice(s []string) []string {
 
 	return s
 }
+
+func IsSameMap(x, y map[string][]string) bool {
+	if len(x) != len(y) {
+		return false
+	}
+
+	keysInX := make([]string, 0, len(x))
+	for k := range x {
+		keysInX = append(keysInX, k)
+	}
+
+	keysInY := make([]string, 0, len(y))
+	for k := range y {
+		keysInY = append(keysInY, k)
+	}
+
+	if !IsSameSlice(keysInX, keysInY) {
+		return false
+	}
+
+	for k := range x {
+		if !IsSameSlice(x[k], y[k]) {
+			return false
+		}
+	}
+
+	return true
+}
+
+func IsSameSlice(x, y []string) bool {
+	if len(x) != len(y) {
+		return false
+	}
+	// create a map of string -> int
+	diff := make(map[string]int, len(x))
+	for _, _x := range x {
+		// 0 value for int is 0, so just increment a counter for the string
+		diff[_x]++
+	}
+	for _, _y := range y {
+		// If the string _y is not in diff bail out early
+		if _, ok := diff[_y]; !ok {
+			return false
+		}
+		diff[_y] -= 1
+		if diff[_y] == 0 {
+			delete(diff, _y)
+		}
+	}
+	if len(diff) == 0 {
+		return true
+	}
+	return false
+}
