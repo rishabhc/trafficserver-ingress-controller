@@ -1,7 +1,6 @@
 package watcher
 
 import (
-	"ingress-ats/util"
 	"reflect"
 	"testing"
 	"time"
@@ -10,7 +9,6 @@ import (
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	fake "k8s.io/client-go/kubernetes/fake"
-	fakecontroller "k8s.io/client-go/tools/cache/testing"
 	framework "k8s.io/client-go/tools/cache/testing"
 )
 
@@ -54,7 +52,6 @@ func TestAllNamespacesWatchFor_Add(t *testing.T) {
 
 	returnedKeys := w.Ep.RedisClient.GetDefaultDBKeyValues()
 	expectedKeys := getExpectedKeysForEndpointAdd()
-	expectedKeys["trafficserver-test-2:testsvc:8080"] = util.ReverseSlice(expectedKeys["trafficserver-test-2:testsvc:8080"])
 
 	if !reflect.DeepEqual(returnedKeys, expectedKeys) {
 		t.Errorf("returned \n%v,  but expected \n%v", returnedKeys, expectedKeys)
@@ -208,16 +205,198 @@ func TestAllNamespacesWatchFor_Delete(t *testing.T) {
 	}
 }
 
+func TestInNamespacesWatchFor_Add(t *testing.T) {
+	w, _ := getTestWatcher()
+
+	cmHandler := CMHandler{"configmaps", w.Ep}
+	targetNs := make([]string, 1, 1)
+	targetNs[0] = "trafficserver"
+
+	err := w.inNamespacesWatchForConfigMaps(&cmHandler, w.Cs.CoreV1().RESTClient(),
+		targetNs, fields.Everything(), &v1.ConfigMap{}, 0, w.Cs)
+
+	if err != nil {
+		t.Error(err)
+	}
+
+	w.Cs.CoreV1().ConfigMaps("trafficserver").Create(&v1.ConfigMap{
+		ObjectMeta: meta_v1.ObjectMeta{
+			Name:      "testsvc",
+			Namespace: "trafficserver",
+		},
+		Data: map[string]string{
+			"proxy.config.output.logfile.rolling_enabled":      "1",
+			"proxy.config.output.logfile.rolling_interval_sec": "4000",
+			"proxy.config.restart.active_client_threshold":     "2",
+		},
+	})
+	time.Sleep(100 * time.Millisecond)
+
+	rEnabled, err := cmHandler.Ep.ATSManager.ConfigGet("proxy.config.output.logfile.rolling_enabled")
+
+	if err != nil {
+		t.Error(err)
+	} else if !reflect.DeepEqual(rEnabled, "1") {
+		t.Errorf("returned \n%s,  but expected \n%s", rEnabled, "1")
+	}
+
+	rInterval, err := cmHandler.Ep.ATSManager.ConfigGet("proxy.config.output.logfile.rolling_interval_sec")
+
+	if err != nil {
+		t.Error(err)
+	} else if !reflect.DeepEqual(rInterval, "4000") {
+		t.Errorf("returned \n%s,  but expected \n%s", rInterval, "4000")
+	}
+
+	threshold, err := cmHandler.Ep.ATSManager.ConfigGet("proxy.config.restart.active_client_threshold")
+
+	if err != nil {
+		t.Error(err)
+	} else if !reflect.DeepEqual(threshold, "2") {
+		t.Errorf("returned \n%s,  but expected \n%s", threshold, "2")
+	}
+}
+
+func TestInNamespacesWatchFor_Update(t *testing.T) {
+	w, _ := getTestWatcher()
+
+	cmHandler := CMHandler{"configmaps", w.Ep}
+	targetNs := make([]string, 1, 1)
+	targetNs[0] = "trafficserver"
+
+	err := w.inNamespacesWatchForConfigMaps(&cmHandler, w.Cs.CoreV1().RESTClient(),
+		targetNs, fields.Everything(), &v1.ConfigMap{}, 0, w.Cs)
+
+	if err != nil {
+		t.Error(err)
+	}
+
+	w.Cs.CoreV1().ConfigMaps("trafficserver").Create(&v1.ConfigMap{
+		ObjectMeta: meta_v1.ObjectMeta{
+			Name:      "testsvc",
+			Namespace: "trafficserver",
+		},
+		Data: map[string]string{
+			"proxy.config.output.logfile.rolling_enabled":      "1",
+			"proxy.config.output.logfile.rolling_interval_sec": "4000",
+			"proxy.config.restart.active_client_threshold":     "2",
+		},
+	})
+	time.Sleep(100 * time.Millisecond)
+
+	w.Cs.CoreV1().ConfigMaps("trafficserver").Update(&v1.ConfigMap{
+		ObjectMeta: meta_v1.ObjectMeta{
+			Name:      "testsvc",
+			Namespace: "trafficserver",
+		},
+		Data: map[string]string{
+			"proxy.config.output.logfile.rolling_enabled":      "1",
+			"proxy.config.output.logfile.rolling_interval_sec": "3000",
+			"proxy.config.restart.active_client_threshold":     "0",
+		},
+	})
+	time.Sleep(100 * time.Millisecond)
+
+	rEnabled, err := cmHandler.Ep.ATSManager.ConfigGet("proxy.config.output.logfile.rolling_enabled")
+
+	if err != nil {
+		t.Error(err)
+	} else if !reflect.DeepEqual(rEnabled, "1") {
+		t.Errorf("returned \n%s,  but expected \n%s", rEnabled, "1")
+	}
+
+	rInterval, err := cmHandler.Ep.ATSManager.ConfigGet("proxy.config.output.logfile.rolling_interval_sec")
+
+	if err != nil {
+		t.Error(err)
+	} else if !reflect.DeepEqual(rInterval, "3000") {
+		t.Errorf("returned \n%s,  but expected \n%s", rInterval, "3000")
+	}
+
+	threshold, err := cmHandler.Ep.ATSManager.ConfigGet("proxy.config.restart.active_client_threshold")
+
+	if err != nil {
+		t.Error(err)
+	} else if !reflect.DeepEqual(threshold, "0") {
+		t.Errorf("returned \n%s,  but expected \n%s", threshold, "0")
+	}
+}
+
+func TestInNamespacesWatchFor_ShouldNotAdd(t *testing.T) {
+	w, _ := getTestWatcher()
+
+	cmHandler := CMHandler{"configmaps", w.Ep}
+	targetNs := make([]string, 1, 1)
+	targetNs[0] = "trafficserver"
+
+	err := w.inNamespacesWatchForConfigMaps(&cmHandler, w.Cs.CoreV1().RESTClient(),
+		targetNs, fields.Everything(), &v1.ConfigMap{}, 0, w.Cs)
+
+	if err != nil {
+		t.Error(err)
+	}
+
+	w.Cs.CoreV1().ConfigMaps("trafficserver").Create(&v1.ConfigMap{
+		ObjectMeta: meta_v1.ObjectMeta{
+			Name:      "testsvc",
+			Namespace: "trafficserver",
+		},
+		Data: map[string]string{
+			"proxy.config.output.logfile.rolling_enabled":      "1",
+			"proxy.config.output.logfile.rolling_interval_sec": "4000",
+			"proxy.config.restart.active_client_threshold":     "2",
+		},
+	})
+	time.Sleep(100 * time.Millisecond)
+
+	w.Cs.CoreV1().ConfigMaps("trafficserver-2").Create(&v1.ConfigMap{
+		ObjectMeta: meta_v1.ObjectMeta{
+			Name:      "testsvc-2",
+			Namespace: "trafficserver-2",
+		},
+		Data: map[string]string{
+			"proxy.config.output.logfile.rolling_enabled":      "1",
+			"proxy.config.output.logfile.rolling_interval_sec": "3000",
+			"proxy.config.restart.active_client_threshold":     "4",
+		},
+	})
+	time.Sleep(100 * time.Millisecond)
+
+	rEnabled, err := cmHandler.Ep.ATSManager.ConfigGet("proxy.config.output.logfile.rolling_enabled")
+
+	if err != nil {
+		t.Error(err)
+	} else if !reflect.DeepEqual(rEnabled, "1") {
+		t.Errorf("returned \n%s,  but expected \n%s", rEnabled, "1")
+	}
+
+	rInterval, err := cmHandler.Ep.ATSManager.ConfigGet("proxy.config.output.logfile.rolling_interval_sec")
+
+	if err != nil {
+		t.Error(err)
+	} else if !reflect.DeepEqual(rInterval, "4000") {
+		t.Errorf("returned \n%s,  but expected \n%s", rInterval, "4000")
+	}
+
+	threshold, err := cmHandler.Ep.ATSManager.ConfigGet("proxy.config.restart.active_client_threshold")
+
+	if err != nil {
+		t.Error(err)
+	} else if !reflect.DeepEqual(threshold, "2") {
+		t.Errorf("returned \n%s,  but expected \n%s", threshold, "2")
+	}
+}
+
 func getTestWatcher() (Watcher, *framework.FakeControllerSource) {
 	clientset := fake.NewSimpleClientset()
-	fc := fakecontroller.NewFakeControllerSource()
+	fc := framework.NewFakeControllerSource()
 
 	exampleEndpoint := createExampleEndpoint()
 	stopChan := make(chan struct{})
 
 	ingressWatcher := Watcher{
 		Cs:           clientset,
-		ATSNamespace: "default",
+		ATSNamespace: exampleEndpoint.ATSManager.Namespace,
 		Ep:           &exampleEndpoint,
 		StopChan:     stopChan,
 	}
