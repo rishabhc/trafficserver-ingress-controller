@@ -23,6 +23,7 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 
+	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 
@@ -75,8 +76,8 @@ func (w *Watcher) Watch() error {
 	cmHandler := CMHandler{"configmaps", w.Ep}
 	targetNs := make([]string, 1, 1)
 	targetNs[0] = w.Ep.ATSManager.Namespace
-	err = w.inNamespacesWatchFor(&cmHandler, w.Cs.CoreV1().RESTClient(),
-		targetNs, fields.Everything(), &v1.ConfigMap{}, 0)
+	err = w.inNamespacesWatchForConfigMaps(&cmHandler, w.Cs.CoreV1().RESTClient(),
+		targetNs, fields.Everything(), &v1.ConfigMap{}, 0, w.Cs)
 	if err != nil {
 		return err
 	}
@@ -106,6 +107,35 @@ func (w *Watcher) allNamespacesWatchFor(h EventHandler, c cache.Getter,
 
 // This is meant to make it easier to add resource watchers on resources that
 // span multiple namespaces
+func (w *Watcher) inNamespacesWatchForConfigMaps(h EventHandler, c cache.Getter,
+	namespaces []string, fieldSelector fields.Selector, objType pkgruntime.Object,
+	resyncPeriod time.Duration, clientset kubernetes.Interface) error {
+	if len(namespaces) == 0 {
+		log.Panic("inNamespacesWatchFor must have at least 1 namespace")
+	}
+	syncFuncs := make([]cache.InformerSynced, len(namespaces))
+	for i, ns := range namespaces {
+		factory := informers.NewSharedInformerFactoryWithOptions(clientset, resyncPeriod, informers.WithNamespace(ns))
+		cmInfo := factory.Core().V1().ConfigMaps().Informer()
+
+		cmInfo.AddEventHandler(cache.ResourceEventHandlerFuncs{
+			AddFunc:    h.Add,
+			UpdateFunc: h.Update,
+			DeleteFunc: h.Delete,
+		})
+
+		go cmInfo.Run(w.StopChan)
+
+		syncFuncs[i] = cmInfo.HasSynced
+	}
+	if !cache.WaitForCacheSync(w.StopChan, syncFuncs...) {
+		s := fmt.Sprintf("Timed out waiting for %s caches to sync", h.GetResourceName())
+		utilruntime.HandleError(fmt.Errorf(s))
+		return errors.New(s)
+	}
+	return nil
+}
+
 func (w *Watcher) inNamespacesWatchFor(h EventHandler, c cache.Getter,
 	namespaces []string, fieldSelector fields.Selector, objType pkgruntime.Object,
 	resyncPeriod time.Duration) error {
