@@ -2,13 +2,13 @@ package watcher
 
 import (
 	"log"
-	"reflect"
 	"testing"
 
 	ep "ingress-ats/endpoint"
 	"ingress-ats/namespace"
 	"ingress-ats/proxy"
 	"ingress-ats/redis"
+	"ingress-ats/util"
 
 	v1beta1 "k8s.io/api/extensions/v1beta1"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -25,7 +25,7 @@ func TestAdd_ExampleIngress(t *testing.T) {
 
 	expectedKeys := getExpectedKeysForAdd()
 
-	if !reflect.DeepEqual(returnedKeys, expectedKeys) {
+	if !util.IsSameMap(returnedKeys, expectedKeys) {
 		t.Errorf("returned \n%v,  but expected \n%v", returnedKeys, expectedKeys)
 	}
 }
@@ -40,7 +40,7 @@ func TestAdd_ExampleIngressWithAnnotation(t *testing.T) {
 
 	expectedKeys := getExpectedKeysForAddWithAnnotation()
 
-	if !reflect.DeepEqual(returnedKeys, expectedKeys) {
+	if !util.IsSameMap(returnedKeys, expectedKeys) {
 		t.Errorf("returned \n%v,  but expected \n%v", returnedKeys, expectedKeys)
 	}
 }
@@ -57,7 +57,7 @@ func TestAdd_ExampleIngressWithTLS(t *testing.T) {
 	expectedKeys["https://test.edge.com/app1"] = expectedKeys["http://test.edge.com/app1"]
 	delete(expectedKeys, "http://test.edge.com/app1")
 
-	if !reflect.DeepEqual(returnedKeys, expectedKeys) {
+	if !util.IsSameMap(returnedKeys, expectedKeys) {
 		t.Errorf("returned \n%v,  but expected \n%v", returnedKeys, expectedKeys)
 	}
 }
@@ -76,7 +76,7 @@ func TestAdd_ExampleIngressWithIgnoredNamespace(t *testing.T) {
 
 	expectedKeys := make(map[string][]string)
 
-	if !reflect.DeepEqual(returnedKeys, expectedKeys) {
+	if !util.IsSameMap(returnedKeys, expectedKeys) {
 		t.Errorf("returned \n%v,  but expected \n%v", returnedKeys, expectedKeys)
 	}
 }
@@ -94,7 +94,7 @@ func TestAdd_ExampleIngressWithIncludedNamespace(t *testing.T) {
 
 	expectedKeys := getExpectedKeysForAdd()
 
-	if !reflect.DeepEqual(returnedKeys, expectedKeys) {
+	if !util.IsSameMap(returnedKeys, expectedKeys) {
 		t.Errorf("returned \n%v,  but expected \n%v", returnedKeys, expectedKeys)
 	}
 
@@ -116,7 +116,7 @@ func TestUpdate_ModifyIngress(t *testing.T) {
 
 	expectedKeys := getExpectedKeysForUpdate_ModifyIngress()
 
-	if !reflect.DeepEqual(returnedKeys, expectedKeys) {
+	if !util.IsSameMap(returnedKeys, expectedKeys) {
 		t.Errorf("returned \n%v,  but expected \n%v", returnedKeys, expectedKeys)
 	}
 }
@@ -134,7 +134,7 @@ func TestUpdate_DeletePath(t *testing.T) {
 	returnedKeys := igHandler.Ep.RedisClient.GetDBOneKeyValues()
 	expectedKeys := getExpectedKeysForUpdate_DeleteService()
 
-	if !reflect.DeepEqual(returnedKeys, expectedKeys) {
+	if !util.IsSameMap(returnedKeys, expectedKeys) {
 		t.Errorf("returned \n%v,  but expected \n%v", returnedKeys, expectedKeys)
 	}
 }
@@ -157,7 +157,7 @@ func TestUpdate_ModifySnippet(t *testing.T) {
 	returnedKeys := igHandler.Ep.RedisClient.GetDBOneKeyValues()
 	expectedKeys := getExpectedKeysForUpdate_ModifySnippet()
 
-	if !reflect.DeepEqual(returnedKeys, expectedKeys) {
+	if !util.IsSameMap(returnedKeys, expectedKeys) {
 		t.Errorf("returned \n%v,  but expected \n%v", returnedKeys, expectedKeys)
 	}
 }
@@ -175,7 +175,7 @@ func TestUpdate_ModifyTLS(t *testing.T) {
 	expectedKeys["https://test.edge.com/app1"] = expectedKeys["http://test.edge.com/app1"]
 	delete(expectedKeys, "http://test.edge.com/app1")
 
-	if !reflect.DeepEqual(returnedKeys, expectedKeys) {
+	if !util.IsSameMap(returnedKeys, expectedKeys) {
 		t.Errorf("returned \n%v,  but expected \n%v", returnedKeys, expectedKeys)
 	}
 }
@@ -190,7 +190,7 @@ func TestDelete(t *testing.T) {
 
 	expectedKeys := make(map[string][]string)
 
-	if !reflect.DeepEqual(returnedKeys, expectedKeys) {
+	if !util.IsSameMap(returnedKeys, expectedKeys) {
 		t.Errorf("returned \n%v,  but expected \n%v", returnedKeys, expectedKeys)
 	}
 

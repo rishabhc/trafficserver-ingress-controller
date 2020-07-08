@@ -1,7 +1,7 @@
 package watcher
 
 import (
-	"reflect"
+	"ingress-ats/util"
 	"testing"
 
 	v1 "k8s.io/api/core/v1"
@@ -18,7 +18,7 @@ func TestAdd_BasicEndpoint(t *testing.T) {
 
 	expectedKeys := getExpectedKeysForEndpointAdd()
 
-	if !reflect.DeepEqual(returnedKeys, expectedKeys) {
+	if !util.IsSameMap(returnedKeys, expectedKeys) {
 		t.Errorf("returned \n%v,  but expected \n%v", returnedKeys, expectedKeys)
 	}
 }
@@ -35,7 +35,7 @@ func TestAdd_IgnoreEndpointNamespace(t *testing.T) {
 
 	expectedKeys := make(map[string][]string)
 
-	if !reflect.DeepEqual(returnedKeys, expectedKeys) {
+	if !util.IsSameMap(returnedKeys, expectedKeys) {
 		t.Errorf("returned \n%v,  but expected \n%v", returnedKeys, expectedKeys)
 	}
 }
@@ -54,7 +54,7 @@ func TestUpdate_UpdateAddress(t *testing.T) {
 
 	expectedKeys := getExpectedKeysForAddressUpdate()
 
-	if !reflect.DeepEqual(returnedKeys, expectedKeys) {
+	if !util.IsSameMap(returnedKeys, expectedKeys) {
 		t.Errorf("returned \n%v,  but expected \n%v", returnedKeys, expectedKeys)
 	}
 }
@@ -76,7 +76,7 @@ func TestUpdate_UpdatePortNumber(t *testing.T) {
 	expectedKeys["trafficserver-test-2:testsvc:8081"][0] = "10.10.2.2#8081#http"
 	expectedKeys["trafficserver-test-2:testsvc:8081"][1] = "10.10.1.1#8081#http"
 
-	if !reflect.DeepEqual(returnedKeys, expectedKeys) {
+	if !util.IsSameMap(returnedKeys, expectedKeys) {
 		t.Errorf("returned \n%v,  but expected \n%v", returnedKeys, expectedKeys)
 	}
 }
@@ -98,7 +98,7 @@ func TestUpdate_UpdatePortName(t *testing.T) {
 	expectedKeys["trafficserver-test-2:testsvc:8080"][0] = "10.10.1.1#8080#https"
 	expectedKeys["trafficserver-test-2:testsvc:8080"][1] = "10.10.2.2#8080#https"
 
-	if !reflect.DeepEqual(returnedKeys, expectedKeys) {
+	if !util.IsSameMap(returnedKeys, expectedKeys) {
 		t.Errorf("returned \n%v,  but expected \n%v", returnedKeys, expectedKeys)
 	}
 }
@@ -118,7 +118,7 @@ func TestUpdate_UpdateEndpointName(t *testing.T) {
 	expectedKeys := getExpectedKeysForEndpointAdd()
 	expectedKeys["trafficserver-test-2:testsvc-modified:8080"] = expectedKeys["trafficserver-test-2:testsvc:8080"]
 
-	if !reflect.DeepEqual(returnedKeys, expectedKeys) {
+	if !util.IsSameMap(returnedKeys, expectedKeys) {
 		t.Errorf("returned \n%v,  but expected \n%v", returnedKeys, expectedKeys)
 	}
 }
@@ -134,7 +134,7 @@ func TestDelete_DeleteEndpoint(t *testing.T) {
 
 	expectedKeys := make(map[string][]string)
 
-	if !reflect.DeepEqual(returnedKeys, expectedKeys) {
+	if !util.IsSameMap(returnedKeys, expectedKeys) {
 		t.Errorf("returned \n%v,  but expected \n%v", returnedKeys, expectedKeys)
 	}
 }
@@ -154,7 +154,7 @@ func TestUpdate_DeleteAddress(t *testing.T) {
 	expectedKeys := getExpectedKeysForEndpointAdd()
 	expectedKeys["trafficserver-test-2:testsvc:8080"] = expectedKeys["trafficserver-test-2:testsvc:8080"][:1]
 
-	if !reflect.DeepEqual(returnedKeys, expectedKeys) {
+	if !util.IsSameMap(returnedKeys, expectedKeys) {
 		t.Errorf("returned \n%v,  but expected \n%v", returnedKeys, expectedKeys)
 	}
 }
@@ -176,7 +176,7 @@ func TestUpdate_AddAddress(t *testing.T) {
 	expectedKeys := getExpectedKeysForEndpointAdd()
 	expectedKeys["trafficserver-test-2:testsvc:8080"] = append(expectedKeys["trafficserver-test-2:testsvc:8080"], "10.10.3.3#8080#http")
 
-	if !reflect.DeepEqual(returnedKeys, expectedKeys) {
+	if !util.IsSameMap(returnedKeys, expectedKeys) {
 		t.Errorf("returned \n%v,  but expected \n%v", returnedKeys, expectedKeys)
 	}
 }
