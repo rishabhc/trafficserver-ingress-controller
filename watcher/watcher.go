@@ -57,15 +57,17 @@ type EventHandler interface {
 func (w *Watcher) Watch() error {
 	//================= Watch for Ingress ==================
 	igHandler := IgHandler{"ingresses", w.Ep}
+	igListWatch := cache.NewListWatchFromClient(w.Cs.ExtensionsV1beta1().RESTClient(), igHandler.GetResourceName(), v1.NamespaceAll, fields.Everything())
 	err := w.allNamespacesWatchFor(&igHandler, w.Cs.ExtensionsV1beta1().RESTClient(),
-		fields.Everything(), &v1beta1.Ingress{}, 0)
+		fields.Everything(), &v1beta1.Ingress{}, 0, igListWatch)
 	if err != nil {
 		return err
 	}
 	//================= Watch for Endpoints =================
 	epHandler := EpHandler{"endpoints", w.Ep}
+	epListWatch := cache.NewListWatchFromClient(w.Cs.CoreV1().RESTClient(), epHandler.GetResourceName(), v1.NamespaceAll, fields.Everything())
 	err = w.allNamespacesWatchFor(&epHandler, w.Cs.CoreV1().RESTClient(),
-		fields.Everything(), &v1.Endpoints{}, 0)
+		fields.Everything(), &v1.Endpoints{}, 0, epListWatch)
 	if err != nil {
 		return err
 	}
@@ -83,9 +85,8 @@ func (w *Watcher) Watch() error {
 
 func (w *Watcher) allNamespacesWatchFor(h EventHandler, c cache.Getter,
 	fieldSelector fields.Selector, objType pkgruntime.Object,
-	resyncPeriod time.Duration) error {
-	epListWatch := cache.NewListWatchFromClient(c, h.GetResourceName(), v1.NamespaceAll, fieldSelector)
-	sharedInformer := cache.NewSharedInformer(epListWatch, objType, resyncPeriod)
+	resyncPeriod time.Duration, listerWatcher cache.ListerWatcher) error {
+	sharedInformer := cache.NewSharedInformer(listerWatcher, objType, resyncPeriod)
 
 	sharedInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    h.Add,

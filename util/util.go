@@ -151,3 +151,11 @@ func ExtractIngressClass(ann map[string]string) (class string, err error) {
 func FmtMarshalled(marshalled []byte) string {
 	return fmt.Sprintf("%q", marshalled)
 }
+
+func ReverseSlice(s []string) []string {
+	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
+		s[i], s[j] = s[j], s[i]
+	}
+
+	return s
+}
