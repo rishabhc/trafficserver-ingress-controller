@@ -16,6 +16,7 @@
 package proxy
 
 import (
+	"errors"
 	"fmt"
 	"os/exec"
 	"strings"
@@ -27,6 +28,8 @@ import (
 type ATSManager struct {
 	Namespace    string
 	IngressClass string
+	Config       map[string]string
+	Test         bool
 }
 
 func (m *ATSManager) IncludeIngressClass(c string) bool {
@@ -44,6 +47,9 @@ func (m *ATSManager) IncludeIngressClass(c string) bool {
 // ConfigSet configures reloadable ATS config. When there is no error,
 // a message string is returned
 func (m *ATSManager) ConfigSet(k, v string) (msg string, err error) {
+	if m.Test {
+		return m.FakeConfigSet(k, v)
+	}
 	cmd := exec.Command("traffic_ctl", "config", "set", k, v)
 	stdoutStderr, err := cmd.CombinedOutput()
 	if err != nil {
@@ -53,6 +59,9 @@ func (m *ATSManager) ConfigSet(k, v string) (msg string, err error) {
 }
 
 func (m *ATSManager) ConfigGet(k string) (msg string, err error) {
+	if m.Test {
+		return m.FakeConfigGet(k)
+	}
 	cmd := exec.Command("traffic_ctl", "config", "get", k)
 	stdoutStderr, err := cmd.CombinedOutput()
 	if err != nil {
@@ -61,4 +70,16 @@ func (m *ATSManager) ConfigGet(k string) (msg string, err error) {
 	stdoutString := fmt.Sprintf("%q", stdoutStderr)
 	configValue := strings.Split(strings.Trim(strings.Trim(stdoutString, "\""), "\\n"), ": ")[1]
 	return configValue, err
+}
+
+func (m *ATSManager) FakeConfigSet(k, v string) (msg string, err error) {
+	m.Config[k] = v
+	return fmt.Sprintf("Ran p.Key: %s p.Val: %s", k, v), nil
+}
+
+func (m *ATSManager) FakeConfigGet(k string) (msg string, err error) {
+	if val, ok := m.Config[k]; ok {
+		return val, nil
+	}
+	return "", errors.New("key does not exist")
 }

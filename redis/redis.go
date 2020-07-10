@@ -21,6 +21,7 @@ import (
 
 	//	"sync"
 
+	"github.com/alicebob/miniredis/v2"
 	"github.com/go-redis/redis"
 )
 
@@ -53,6 +54,37 @@ func Init() (*Client, error) {
 		return nil, fmt.Errorf("Failed to FlushAll: %s", err.Error())
 	}
 	return rClient, nil
+}
+
+func InitForTesting() (*Client, error) {
+	mr, err := miniredis.Run()
+
+	if err != nil {
+		return nil, err
+	}
+
+	defaultDB := redis.NewClient(&redis.Options{
+		Addr: mr.Addr(), // connect to domain socket
+		DB:   0,         // use default DB
+	})
+
+	_, err = defaultDB.Ping().Result()
+	if err != nil {
+		return nil, err
+	}
+
+	dbOne := redis.NewClient(&redis.Options{
+		Addr: mr.Addr(), // connect to domain socket
+		DB:   1,         // use DB number 1
+	})
+
+	_, err = dbOne.Ping().Result()
+	if err != nil {
+		return nil, err
+	}
+
+	return &Client{defaultDB, dbOne}, nil
+
 }
 
 // CreateRedisClient establishes connection to redis DB

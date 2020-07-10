@@ -187,7 +187,7 @@ func TestUpdate_ModifyTLS(t *testing.T) {
 	returnedKeys := igHandler.Ep.RedisClient.GetDBOneKeyValues()
 	expectedKeys := getExpectedKeysForAdd()
 	expectedKeys["https://test.edge.com/app1"] = expectedKeys["http://test.edge.com/app1"]
-	delete(expectedKeys, "http://test.edge.com/app1")
+	expectedKeys["http://test.edge.com/app1"] = []string{}
 
 	if !util.IsSameMap(returnedKeys, expectedKeys) {
 		t.Errorf("returned \n%v,  but expected \n%v", returnedKeys, expectedKeys)
@@ -294,7 +294,7 @@ func createExampleIgHandler() IgHandler {
 }
 
 func createExampleEndpoint() ep.Endpoint {
-	rClient, err := redis.Init()
+	rClient, err := redis.InitForTesting()
 	if err != nil {
 		log.Panicln("Redis Error: ", err)
 	}
@@ -311,8 +311,13 @@ func createExampleEndpoint() ep.Endpoint {
 
 	exampleEndpoint := ep.Endpoint{
 		RedisClient: rClient,
-		ATSManager:  &proxy.ATSManager{Namespace: "default", IngressClass: ""},
-		NsManager:   &nsManager,
+		ATSManager: &proxy.ATSManager{
+			Namespace:    "default",
+			IngressClass: "",
+			Config:       make(map[string]string),
+			Test:         true,
+		},
+		NsManager: &nsManager,
 	}
 
 	return exampleEndpoint
@@ -337,7 +342,7 @@ func getExpectedKeysForUpdate_ModifySnippet() map[string][]string {
 func getExpectedKeysForUpdate_ModifyIngress() map[string][]string {
 	expectedKeys := getExpectedKeysForAdd()
 
-	delete(expectedKeys, "http://test.media.com/app2")
+	expectedKeys["http://test.media.com/app2"] = []string{}
 
 	expectedKeys["http://test.media.com/app2-modified"] = []string{}
 	expectedKeys["http://test.media.com/app2-modified"] = append(expectedKeys["http://test.media.com/app2"], "trafficserver-test:appsvc2:8080")
@@ -351,7 +356,7 @@ func getExpectedKeysForUpdate_ModifyIngress() map[string][]string {
 func getExpectedKeysForUpdate_DeleteService() map[string][]string {
 	expectedKeys := getExpectedKeysForAdd()
 
-	delete(expectedKeys, "http://test.media.com/app2")
+	expectedKeys["http://test.media.com/app2"] = []string{}
 
 	return expectedKeys
 }
