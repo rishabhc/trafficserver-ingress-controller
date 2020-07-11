@@ -405,12 +405,12 @@ func getTestWatcher() (Watcher, *framework.FakeControllerSource) {
 	clientset := fake.NewSimpleClientset()
 	fc := framework.NewFakeControllerSource()
 
-	exampleEndpoint := createExampleEndpoint()
+	exampleEndpoint := createExampleEndpointWithFakeATS()
 	stopChan := make(chan struct{})
 
 	ingressWatcher := Watcher{
 		Cs:           clientset,
-		ATSNamespace: exampleEndpoint.ATSManager.Namespace,
+		ATSNamespace: "trafficserver-test-2",
 		Ep:           &exampleEndpoint,
 		StopChan:     stopChan,
 	}

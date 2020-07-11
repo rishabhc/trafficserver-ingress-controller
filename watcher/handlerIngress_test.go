@@ -314,8 +314,6 @@ func createExampleEndpoint() ep.Endpoint {
 		ATSManager: &proxy.ATSManager{
 			Namespace:    "default",
 			IngressClass: "",
-			Config:       make(map[string]string),
-			Test:         true,
 		},
 		NsManager: &nsManager,
 	}
