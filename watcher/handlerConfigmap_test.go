@@ -15,6 +15,11 @@
 package watcher
 
 import (
+	ep "ingress-ats/endpoint"
+	"ingress-ats/namespace"
+	"ingress-ats/proxy"
+	"ingress-ats/redis"
+	"log"
 	"reflect"
 	"testing"
 
@@ -104,8 +109,37 @@ func createExampleConfigMap() v1.ConfigMap {
 }
 
 func createExampleCMHandler() CMHandler {
-	exampleEndpoint := createExampleEndpoint()
+	exampleEndpoint := createExampleEndpointWithFakeATS()
 	cmHandler := CMHandler{"configmap", &exampleEndpoint}
 
 	return cmHandler
+}
+
+func createExampleEndpointWithFakeATS() ep.Endpoint {
+	rClient, err := redis.InitForTesting()
+	if err != nil {
+		log.Panicln("Redis Error: ", err)
+	}
+
+	namespaceMap := make(map[string]bool)
+	ignoreNamespaceMap := make(map[string]bool)
+
+	nsManager := namespace.NsManager{
+		NamespaceMap:       namespaceMap,
+		IgnoreNamespaceMap: ignoreNamespaceMap,
+	}
+
+	nsManager.Init()
+
+	exampleEndpoint := ep.Endpoint{
+		RedisClient: rClient,
+		ATSManager: &proxy.FakeATSManager{
+			Namespace:    "default",
+			IngressClass: "",
+			Config:       make(map[string]string),
+		},
+		NsManager: &nsManager,
+	}
+
+	return exampleEndpoint
 }
