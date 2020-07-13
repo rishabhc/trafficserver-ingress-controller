@@ -33,7 +33,6 @@ jobs:
     - name: Install Busted
       run: |
         luarocks install busted
-        luarocks make
 
     - name: Get dependencies
       run: |
@@ -52,4 +51,4 @@ jobs:
     - name: Test RedisPluginATS
       run: |
         cd pluginats
-        busted -o connect_redis_test.lua
+        ../.luarocks/bin/busted connect_redis_test.lua
