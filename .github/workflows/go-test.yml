@@ -27,6 +27,9 @@ jobs:
     
     - uses: leafo/gh-actions-luarocks@v2
 
+    - name: Install Busted
+      run: luarocks install busted
+
     - name: Check out code into the Go module directory
       uses: actions/checkout@v2
 
@@ -43,10 +46,6 @@ jobs:
     
     - name: Test Redis
       run: go test -v ./redis/
-
-    - name: Install Busted
-      run: |
-        luarocks install busted
     
     - name: Test RedisPluginATS
       run: |
