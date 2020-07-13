@@ -163,7 +163,7 @@ func TestUpdate_ModifySnippet(t *testing.T) {
 	ts.debug('Modifications for the purpose of testing')`
 
 	updatedExampleIngress.ObjectMeta.Annotations["ats.ingress.kubernetes.io/server-snippet"] = exampleSnippet
-	updatedExampleIngress.SetResourceVersion("10")
+	updatedExampleIngress.SetResourceVersion("1")
 
 	igHandler.add(&exampleIngress)
 	igHandler.update(&exampleIngress, &updatedExampleIngress)
