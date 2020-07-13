@@ -34,6 +34,7 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 
 	"ingress-ats/endpoint"
+	"ingress-ats/proxy"
 )
 
 // FIXME: watching all namespace does not work...
@@ -75,7 +76,7 @@ func (w *Watcher) Watch() error {
 	//================= Watch for ConfigMaps =================
 	cmHandler := CMHandler{"configmaps", w.Ep}
 	targetNs := make([]string, 1, 1)
-	targetNs[0] = w.Ep.ATSManager.Namespace
+	targetNs[0] = w.Ep.ATSManager.(*proxy.ATSManager).Namespace
 	err = w.inNamespacesWatchForConfigMaps(&cmHandler, w.Cs.CoreV1().RESTClient(),
 		targetNs, fields.Everything(), &v1.ConfigMap{}, 0, w.Cs)
 	if err != nil {
