@@ -34,3 +34,6 @@ jobs:
 
     - name: Test Watcher
       run: go test -v ./watcher/
+    
+    - name: Test Redis
+      run: go test -v ./redis/
