@@ -20,6 +20,12 @@ jobs:
       with:
         go-version: ^1.13
       id: go
+    
+    - uses: xpol/setup-lua@v1
+      with:
+        lua-version: "5.1.4"
+    
+    - uses: leafo/gh-actions-luarocks@v2
 
     - name: Check out code into the Go module directory
       uses: actions/checkout@v2
@@ -37,3 +43,12 @@ jobs:
     
     - name: Test Redis
       run: go test -v ./redis/
+
+    - name: Install Busted
+      run: |
+        luarocks install busted
+    
+    - name: Test RedisPluginATS
+      run: |
+        cd pluginats
+        busted -o connect_redis_test.lua
