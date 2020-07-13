@@ -103,7 +103,7 @@ RUN chmod 755 tls-config.sh
 RUN chmod 755 tls-reload.sh
 RUN chmod 755 entry.sh
 
-FROM alpine:3.11
+FROM alpine:3.12
 
 COPY --from=builder /usr/local /usr/local
 
