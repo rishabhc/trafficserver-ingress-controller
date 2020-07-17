@@ -1,12 +1,6 @@
 name: Test
 
-on:
-  push:
-    branches:
-      - 'cicd-pipeline-githubactions'
-  pull_request:
-    branches: 
-      - 'cicd-pipeline-githubactions'
+on: [push, pull_request]
 
 jobs:
 
