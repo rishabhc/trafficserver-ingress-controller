@@ -25,9 +25,6 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: '3.7' 
-        
-      - name: Docker Eval
-        run: eval $(minikube docker-env)
       
       - name: Build ATS Alpine
         run: docker build -t ats_alpine .
@@ -49,6 +46,7 @@ jobs:
       
       - name: Test 
         run: |
+          cd tests
           pytest -q --minikubeip="$(minikube ip)" suite/test_ingress.py
 
       
