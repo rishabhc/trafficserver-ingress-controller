@@ -1,4 +1,4 @@
-name: Build
+name: Build and Integrate
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
       - 'cicd-pipeline-githubactions'
 
 jobs:
-  build:
+  build-and-integrate:
     runs-on: ubuntu-latest
 
     steps:
